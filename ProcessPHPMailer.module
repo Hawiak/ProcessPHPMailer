@@ -1,0 +1,115 @@
+<?php
+include('PHPMailer/PHPMailerAutoload.php');
+include('PHPMailer/class.phpmailer.php');
+class ProcessPHPMailer extends Process  implements Module, ConfigurableModule{
+    const PAGE_NAME = "phpmailer";
+    public static function getModuleInfo(){
+        return array(
+            'title' => 'PHPMailer',
+            'summary' => __('Implements SMTP mailer'),
+            'autoload' => true,
+            'version' => 0.1,
+            'author' => 'Harmster',
+            'href' => 'http://hawiak.nl'
+        );
+    }
+    public function init(){
+        $this->setFuel('phpmailer', $this);
+        $this->smtp_host = $this->get('smtp_host');
+        $this->smtp_password = $this->get('smtp_password');
+        $this->smtp_user = $this->get('smtp_user');
+        $this->from_name = $this->get('from_name');
+        $this->reply_email = $this->get('reply_email');
+        $this->from_email = $this->get('from_email');
+        $this->secure = $this->get('smtp_secure');
+        $this->smtp_port = $this->get('smtp_port');
+    }
+    static public function getModuleConfigInputfields(array $data){
+        $form = new InputfieldForm();
+        $wrapper = new InputfieldWrapper();
+        $field = wire('modules')->get('InputfieldText');
+        $field->label = "STMP Hostname";
+        $field->attr('name+id', 'smtp_host');
+        if(isset($data['smtp_host']) ? $field->value = $data['smtp_host'] : $field->value = "");
+        $wrapper->append($field);
+
+        $field = wire('modules')->get('InputfieldText');
+        $field->label = "STMP Username";
+        $field->attr('name+id', 'smtp_user');
+        if(isset($data['smtp_user']) ? $field->value = $data['smtp_user'] : $field->value = "");
+        $wrapper->append($field);
+
+        $field = wire('modules')->get('InputfieldText');
+        $field->label = "STMP Password";
+        $field->attr('name+id', 'smtp_password');
+        $field->attr('type', 'password');
+        if(isset($data['smtp_password']) ? $field->value = $data['smtp_password'] : $field->value = "");
+        $wrapper->append($field);
+        $form->append($wrapper);
+
+        $field = wire('modules')->get('InputfieldText');
+        $field->label = "STMP Port";
+        $field->attr('name+id', 'smtp_port');
+        if(isset($data['smtp_port']) ? $field->value = $data['smtp_port'] : $field->value = "");
+        $wrapper->append($field);
+        $form->append($wrapper);
+
+        $wrapper = new InputfieldWrapper();
+        $field = wire('modules')->get('InputfieldText');
+        $field->label = "Reply email";
+        $field->attr('name+id', 'reply_email');
+        if(isset($data['reply_email']) ? $field->value = $data['reply_email'] : $field->value = "");
+        $wrapper->append($field);
+
+        $field = wire('modules')->get('InputfieldText');
+        $field->label = "From name";
+        $field->attr('name+id', 'from_name');
+        if(isset($data['from_name']) ? $field->value = $data['from_name'] : $field->value = "");
+        $wrapper->append($field);
+
+        $field = wire('modules')->get('InputfieldText');
+        $field->label = "Secure";
+        $field->attr('name+id', 'secure');
+        if(isset($data['secure']) ? $field->value = $data['secure'] : $field->value = "tls");
+        $wrapper->append($field);
+
+        $field = wire('modules')->get('InputfieldText');
+        $field->label = "From email";
+        $field->attr('name+id', 'from_email');
+        if(isset($data['from_email']) ? $field->value = $data['from_email'] : $field->value = "");
+        $wrapper->append($field);
+        $form->append($wrapper);
+        return $form;
+    }
+    public function get_obj(){
+        return new PHPMailer();
+    }
+    public function send($subject, $body,  $receivers, $attachment=null){
+        $mail = new PHPMailer();
+        $mail->Host = $this->smtp_host;
+        $mail->SMTPAuth = true;
+        $mail->SMTPSecure = $this->smtp_secure;
+        $mail->Port = $this->smtp_port;
+        $mail->Username = $this->smtp_user;
+        $mail->Password = $this->smtp_pass;
+        $mail->SetFrom($this->from_email, $this->from_name);
+        $mail->AddReplyTo($this->reply_email, $this->from_name);
+        $mail->Subject = $subject;
+        $mail->SMTPDebug = 1;
+        $mail->MsgHTML($body);
+        foreach($receivers as $email => $name){
+            $mail->AddAddress($email, $name);
+        }
+        if($attachment != null){
+            foreach($attachment as $file){
+                $mail->AddAttachment($file);
+            }
+        }
+
+        if(!$mail->Send()){
+            return "Error: " . $mail->ErrorInfo;
+        }else{
+            return true;
+        }
+    }
+}
